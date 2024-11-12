@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>phong shading</title>
+		<style>
+			body { margin: 0; }
+			canvas { display: block; }
+		</style>
+	</head>
+	<body>
+        <!--
+        For an invertible matrix A, (A^T)^-1 = (A^-1)^T
+        https://honey-chicken.tistory.com/184
+
+        -->
+        
+        <script id="vertexShader" type="x-shader/x-vertex">
+
+            mat3 inverseTransposeMat3(mat3 m){
+                float det = m[0][0] * (m[1][1] * m[2][2] - m[1][2] * m[2][1]) -m[0][1] * (m[1][0] * m[2][2] - m[1][2] * m[2][0]) + m[0][2] * (m[1][0] * m[2][1] - m[1][1] * m[2][0]);
+                mat3 adj;
+                adj[0] = vec3( m[1][1] * m[2][2] - m[1][2] * m[2][1],-m[0][1] * m[2][2] + m[0][2] * m[2][1],m[0][1] * m[1][2] - m[0][2] * m[1][1]);
+                adj[1] = vec3(-m[1][0] * m[2][2] + m[1][2] * m[2][0],m[0][0] * m[2][2] - m[0][2] * m[2][0],-m[0][0] * m[1][2] + m[0][2] * m[1][0]);
+                adj[2] = vec3( m[1][0] * m[2][1] - m[1][1] * m[2][0],-m[0][0] * m[2][1] + m[0][1] * m[2][0],m[0][0] * m[1][1] - m[0][1] * m[1][0]);
+
+                return adj/det;
+            }
+            
+			uniform mat4 modelViewMatrix; // optional when using ShaderMaterial
+			uniform mat4 projectionMatrix; // optional when using ShaderMaterial
+            uniform mat4 viewMatrix; // optional when using ShaderMaterial
+            uniform mat4 modelMatrix; // optional when using ShaderMaterial
+            uniform mat3 normalMatrix;
+            uniform mat4 inverseTransposeM;
+
+            uniform vec3 eyePos;
+            attribute vec3 position;
+            attribute vec3 normal;
+            varying vec3 v_normal, v_view;
+
+			void main()	{
+                v_normal = normalize(inverseTransposeMat3(mat3(modelMatrix)) * normal);
+                vec3 worldPos = (modelMatrix * vec4(position,1.0)).xyz;
+                v_view = normalize(eyePos - worldPos);
+                gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4( position, 1.0 );
+			}
+
+		</script>
+
+		<script id="fragmentShader" type="x-shader/x-fragment">
+
+			precision mediump float;
+			precision mediump int;
+
+            vec3 matDiff, matSpec, matAmbi, matEmit;
+            float matSh;
+            vec3 srcDiff, srcSpec, srcAmbi;
+
+            uniform vec3 lightDir;
+			varying vec3 v_normal, v_view;
+
+			void main()	{
+                matDiff = vec3(0.0, 1.0, 0.0);
+                matSpec = vec3(0.5, 0.5, 0.5);
+                matAmbi = vec3(0.1, 0.1, 0.1);
+                matSh = 30.0;
+
+                srcDiff = vec3(1, 1, 1);
+                srcSpec = vec3(1, 1, 1);
+                srcAmbi = vec3(1, 1, 1);
+
+                vec3 normal = normalize(v_normal);
+                vec3 view = normalize(v_view);
+                vec3 light = normalize(lightDir);
+
+                //diffuse
+                vec3 diff = max(dot(normal,light),0.0) * srcDiff * matDiff;
+
+                //specular
+                vec3 refl = 2.0 * normal * dot(normal,light) - light;
+                vec3 spec = pow(max(dot(refl,view),0.0),matSh) * srcSpec * matSpec;
+
+                //ambient
+                vec3 ambi = srcAmbi * matAmbi;
+
+
+				gl_FragColor = vec4(diff + spec + ambi, 1.0);
+			}
+
+		</script>
+        <script type="importmap">
+            {
+                "imports": {
+                    "three": "https://unpkg.com/three@v0.157.0/build/three.module.js",
+                    "three/addons/": "https://unpkg.com/three@v0.157.0/examples/jsm/"
+                }
+            }
+        </script>
+		<script type="module">
+            import * as THREE from 'three';
+            import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+            document.body.appendChild( renderer.domElement );
+
+            const camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 500 );
+            camera.position.set( 0, 3, -10 );
+            camera.lookAt( 0, 0, 0 );
+        
+            const scene = new THREE.Scene();
+            scene.background = new THREE.Color('black');
+
+            const controls = new OrbitControls( camera, renderer.domElement );
+
+            const ambilight = new THREE.AmbientLight(0xFFFFFF, 0.1);
+            scene.add(ambilight);
+            const dlight = new THREE.DirectionalLight(0xFFFFFF, 1);
+            dlight.position.set(5, 2, -5);
+            dlight.target.position.set(0, 0, 0);
+            scene.add(dlight);
+            scene.add(dlight.target);
+
+            const geom = new THREE.SphereGeometry( 1, 30, 20 );
+            const mat = new THREE.MeshPhongMaterial({
+                color: 0xFF0000,
+                flatShading: false,
+            });
+
+            const ball = new THREE.Mesh(geom,mat);
+            scene.add(ball);
+            ball.position.set(1.5,0,0);
+
+            let m = new THREE.Matrix4();
+
+            let uniforms = {
+                inverseTransposeM:{type:"mat4", value:m},
+                eyePos:{type:"vec3", value:camera.position},
+                lightDir:{type:"vec3", value:dlight.position}
+            }
+            const mat2 = new THREE.RawShaderMaterial({
+                uniforms: uniforms,
+                vertexShader: document.getElementById( 'vertexShader' ).textContent,
+				fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+            });
+
+            const ball2 = new THREE.Mesh(geom,mat2)
+            scene.add(ball2);
+            ball2.position.set(-1.5,0,0);
+            ball2.material.uniforms.inverseTransposeM.value = ball2.matrixWorld.invert().transpose();
+
+			function animate(time) {
+                controls.update();
+				requestAnimationFrame( animate );
+				renderer.render( scene, camera );
+			}
+			animate();
+		</script>
+	</body>
+</html>
