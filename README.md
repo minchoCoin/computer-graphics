@@ -9,3 +9,8 @@ simple unity assignments that move the ship and fire a bullet.
 
 ## HW2
 threejs and webgl assignments that apply phong lighting to spheres.
+
+## HW3
+very simple gun game using Unity, Rigidbody, Physical Material, Collider, and Collision.
+
+[![Video Label](http://img.youtube.com/vi/s3T8pG4S0jA/0.jpg)](https://youtu.be/s3T8pG4S0jA)
