@@ -15,6 +15,13 @@ very simple gun game using Unity, Rigidbody, Physical Material, Collider, and Co
 
 [![Video Label](http://img.youtube.com/vi/s3T8pG4S0jA/0.jpg)](https://youtu.be/s3T8pG4S0jA)
 
+## Lab4
+Unity AI Navigation practice
+- AI Navigation Mesh
+- Navigation Agent
+
+[![Video Label](http://img.youtube.com/vi/yJ7JJkwgFW4/0.jpg)](https://youtu.be/yJ7JJkwgFW4)
+
 ## Lab5
 Unity animation practice with Unity-Chan! Model
 - Unity Chan! model: [link](https://assetstore.unity.com/packages/3d/characters/unity-chan-model-18705)
